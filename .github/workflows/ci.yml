@@ -1,0 +1,80 @@
+name: build-test-video
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pick newest Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -z "$X" ] && X=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$X"
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Make demo meeting audio (macOS on-device voice)
+        run: |
+          say -v Samantha -r 175 -o demo/demo.aiff -f demo/script.txt || say -o demo/demo.aiff -f demo/script.txt
+          ls -la demo
+
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Boot simulator
+        run: |
+          DEV=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];c=[(k,x) for k,v in d.items() if 'iOS-26' in k for x in v if x['name'].startswith('iPhone')];c.sort(key=lambda t:t[1]['name']);print(c[-1][1]['udid'])")
+          echo "DEV=$DEV" >> $GITHUB_ENV
+          xcrun simctl boot "$DEV" || true
+          xcrun simctl bootstatus "$DEV" -b
+          xcrun simctl privacy "$DEV" grant all com.yourcompany.localnotes || true
+          xcrun simctl status_bar "$DEV" override --time "9:41" --batteryLevel 100 --cellularBars 4 || true
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild -project LocalNotes.xcodeproj -scheme LocalNotes -destination "id=$DEV" \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log | grep -E "error:|warning: unre|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Unit tests
+        run: |
+          set -o pipefail
+          xcodebuild -project LocalNotes.xcodeproj -scheme LocalNotes -destination "id=$DEV" \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO test 2>&1 | tee test.log | grep -E "Test Case|error:|TEST (SUCCEEDED|FAILED)|Executed" || true
+
+      - name: Run demo and record video
+        run: |
+          APP=$(find build -name "LocalNotes.app" -path "*iphonesimulator*" | head -1)
+          xcrun simctl install "$DEV" "$APP"
+          xcrun simctl privacy "$DEV" grant all com.yourcompany.localnotes || true
+          xcrun simctl io "$DEV" recordVideo --codec=h264 --force demo.mp4 &
+          REC=$!
+          sleep 3
+          xcrun simctl launch --console-pty "$DEV" com.yourcompany.localnotes -demo > demo.log 2>&1 &
+          for i in $(seq 1 120); do grep -q "DEMO_NOTES_END" demo.log && break; sleep 2; done
+          sleep 6
+          # scroll through the result so the notes are visible in the video
+          for i in 1 2 3 4; do xcrun simctl io "$DEV" screenshot "shot-$i.png" >/dev/null 2>&1; sleep 2; done
+          kill -INT $REC; wait $REC || true
+          grep DEMO_ demo.log || tail -50 demo.log
+          ls -la demo.mp4
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: localnotes-results
+          path: |
+            demo.mp4
+            demo.log
+            build.log
+            test.log
+            shot-*.png
