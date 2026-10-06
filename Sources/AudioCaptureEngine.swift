@@ -7,7 +7,7 @@ import Foundation
 /// Delivers buffers already converted to `targetFormat` (the speech analyzer's preferred format).
 /// Handles phone-call/Siri interruptions and route changes (AirPods in/out) by restarting itself.
 final class AudioCaptureEngine: @unchecked Sendable {
-    enum Event: Sendable {
+    enum Event: @unchecked Sendable {
         case buffer(AVAudioPCMBuffer, hostTime: Date)
         case interrupted(at: Date)
         case resumed(at: Date)
