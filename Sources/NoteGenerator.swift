@@ -60,10 +60,16 @@ struct NoteGenerator {
 
         switch engine {
         case .foundationModels:
-            var parts: [ChapterNotes] = []
-            for c in nonEmpty { parts.append(try await notes(for: c)) }
-            let summary = try await summarize(parts)
-            return (render(summary: summary, parts: parts), .foundationModels)
+            // Apple's model can report "available" and still fail mid-generation (download pending, memory
+            // pressure, simulator). The user must always get notes, so fall back to the rule-based engine.
+            do {
+                var parts: [ChapterNotes] = []
+                for c in nonEmpty { parts.append(try await notes(for: c)) }
+                let summary = try await summarize(parts)
+                return (render(summary: summary, parts: parts), .foundationModels)
+            } catch {
+                return (RuleBasedNotes.render(nonEmpty), .ruleBased)
+            }
         case .ruleBased:
             return (RuleBasedNotes.render(nonEmpty), .ruleBased)
         }

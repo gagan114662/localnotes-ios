@@ -40,4 +40,12 @@ final class ContextualizerTests: XCTestCase {
         XCTAssertTrue(md.contains("- [ ] Daniel will finish onboarding by October thirtieth."))
         XCTAssertFalse(md.contains("- [ ] The weather was nice."))
     }
+
+    /// Notes must never be empty for the user: whichever engine runs, the result carries the spoken facts.
+    func testGenerateAlwaysReturnsNotesEvenWithoutAppleModel() async throws {
+        let ch = Contextualizer().chapters(segments: [seg(0, "ship the launch plan on friday")], visuals: [])
+        let (md, engine) = try await NoteGenerator().generate(chapters: ch)
+        XCTAssertFalse(md.isEmpty)
+        XCTAssertTrue(md.lowercased().contains("friday"), "notes lost the spoken fact; engine=\(engine.rawValue)")
+    }
 }

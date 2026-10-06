@@ -117,3 +117,15 @@ Modules (one file each in `Sources/`):
 - Notes: action-item recall on a scripted meeting with 8 known action items → at least 7 found, 0 invented
   (each must cite a segment that contains it).
 - Privacy: run with a network proxy logging all traffic → zero requests carrying audio/text.
+
+## Decision 2026-10-06: Gemma for phones without Apple Intelligence (Gagan asked)
+- Note writing: keep Apple Foundation Models first (built in, 0 MB download, ~3B). Add **Gemma 4 E2B** (Apache 2.0, ~2.6 GB
+  .litertlm, ~0.6-1.5 GB RAM, ~25-56 tokens/s on iPhone 17 Pro via LiteRT-LM) as the second engine, replacing the rule-based
+  fallback on iPhones/iPads without Apple Intelligence. Optional one-time download in Settings; then fully offline.
+  E4B only on 8 GB devices (15 Pro and newer). Same @Generable-style JSON schema, enforced by JSON-schema-constrained decoding.
+- Linking slides to speech + search: **EmbeddingGemma 2** (740M, multimodal: text, image, audio; announced by Sundar Pichai
+  on Oct 6 2026) replaces NLEmbedding. One vector space for slide IMAGES and spoken text, so a slide photo can match what was
+  said even when OCR is poor; also gives "search everything I heard about X" across sessions. Quantized, ~300-400 MB.
+- Engine order: Foundation Models -> Gemma 4 E2B (if downloaded) -> rule-based. The note header says which engine wrote it.
+- Proof before shipping: on-device benchmark on a real iPhone (not simulator): RAM, tokens/s, battery per hour of notes,
+  and the 6 acceptance tests above, with each engine.
