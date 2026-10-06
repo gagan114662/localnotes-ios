@@ -1,0 +1,72 @@
+name: LocalNotes
+options:
+  bundleIdPrefix: com.yourcompany
+  deploymentTarget:
+    iOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    CODE_SIGNING_ALLOWED: "NO"
+    GENERATE_INFOPLIST_FILE: "YES"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  LocalNotes:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+      - Shared
+      - path: demo/slides.pdf
+        buildPhase: resources
+      - path: demo/demo.aiff
+        buildPhase: resources
+        optional: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourcompany.localnotes
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "LocalNotes records audio to transcribe it on this device. Audio never leaves your device."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Speech is transcribed on this device only."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Import slide photos and screenshots."
+        INFOPLIST_KEY_UIBackgroundModes: audio
+    dependencies:
+      - target: LocalNotesBroadcast
+  LocalNotesBroadcast:
+    type: app-extension
+    platform: iOS
+    sources:
+      - BroadcastExtension
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourcompany.localnotes.LocalNotesBroadcast
+    info:
+      path: BroadcastExtension/Info.plist
+      properties:
+        CFBundleDisplayName: LocalNotes
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.broadcast-services-upload
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SampleHandler
+          RPBroadcastProcessMode: RPBroadcastProcessModeSampleBuffer
+  LocalNotesTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: LocalNotes
+    settings:
+      base:
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/LocalNotes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LocalNotes"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+schemes:
+  LocalNotes:
+    build:
+      targets:
+        LocalNotes: all
+        LocalNotesTests: [test]
+    test:
+      targets: [LocalNotesTests]
