@@ -62,6 +62,15 @@ targets:
       base:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/LocalNotes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LocalNotes"
         BUNDLE_LOADER: "$(TEST_HOST)"
+  LocalNotesUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: LocalNotes
+    settings:
+      base:
+        TEST_TARGET_NAME: LocalNotes
 schemes:
   LocalNotes:
     build:
@@ -69,4 +78,4 @@ schemes:
         LocalNotes: all
         LocalNotesTests: [test]
     test:
-      targets: [LocalNotesTests]
+      targets: [LocalNotesTests, LocalNotesUITests]

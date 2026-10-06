@@ -47,25 +47,19 @@ jobs:
 
       - name: Unit tests
         run: |
-          set -o pipefail
           xcodebuild -project LocalNotes.xcodeproj -scheme LocalNotes -destination "id=$DEV" \
-            -derivedDataPath build CODE_SIGNING_ALLOWED=NO test 2>&1 | tee test.log | grep -E "Test Case|error:|TEST (SUCCEEDED|FAILED)|Executed" || true
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO test -only-testing:LocalNotesTests 2>&1 | tee test.log | grep -E "Test Case|error:|TEST (SUCCEEDED|FAILED)|Executed" || true
 
-      - name: Run demo and record video
+      - name: Run demo as a user and record video
         run: |
-          APP=$(find build -name "LocalNotes.app" -path "*iphonesimulator*" | head -1)
-          xcrun simctl install "$DEV" "$APP"
-          xcrun simctl privacy "$DEV" grant all com.yourcompany.localnotes || true
           xcrun simctl io "$DEV" recordVideo --codec=h264 --force demo.mp4 &
           REC=$!
           sleep 3
-          xcrun simctl launch --console-pty "$DEV" com.yourcompany.localnotes -demo > demo.log 2>&1 &
-          for i in $(seq 1 120); do grep -q "DEMO_NOTES_END" demo.log && break; sleep 2; done
-          sleep 6
-          # scroll through the result so the notes are visible in the video
-          for i in 1 2 3 4; do xcrun simctl io "$DEV" screenshot "shot-$i.png" >/dev/null 2>&1; sleep 2; done
+          xcodebuild -project LocalNotes.xcodeproj -scheme LocalNotes -destination "id=$DEV" \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO test -only-testing:LocalNotesUITests 2>&1 | tee uitest.log | grep -E "Test Case|error:|TEST (SUCCEEDED|FAILED)|DEMO_" || true
           kill -INT $REC; wait $REC || true
-          grep DEMO_ demo.log || tail -50 demo.log
+          xcrun simctl spawn "$DEV" log show --last 15m --predicate 'eventMessage CONTAINS "DEMO_"' --style compact > demo.log 2>&1 || true
+          grep -c DEMO_ demo.log || true
           ls -la demo.mp4
 
       - uses: actions/upload-artifact@v4
@@ -77,4 +71,5 @@ jobs:
             demo.log
             build.log
             test.log
+            uitest.log
             shot-*.png

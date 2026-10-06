@@ -135,7 +135,7 @@ final class DemoRunner {
 
     private func log(_ text: String, _ ok: Bool) {
         steps.append(Step(text: text, ok: ok))
-        print("DEMO_STEP \(ok ? "OK" : "FAIL") \(text)")
+        print("DEMO_STEP \(ok ? "OK" : "FAIL") \(text)"); NSLog("DEMO_STEP %@ %@", ok ? "OK" : "FAIL", text)
     }
 }
 
